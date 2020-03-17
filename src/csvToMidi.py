@@ -2,12 +2,10 @@ import csv
 
 import numpy as np
 import MidiFile as md
-# import fluidsynth as fl
-# from midi2audio import FluidSynth
+import sys
 
 meanFrequencies = []
-numChannels = 1
-with open('nothing.csv') as csvfile:
+with open(sys.argv[1]) as csvfile:
     next(csvfile)
     next(csvfile)
     reader = csv.reader(csvfile)
@@ -17,20 +15,19 @@ with open('nothing.csv') as csvfile:
     for line in reader:
         frequencies = np.array(line[3:8]).astype(np.float)
 
-        if count >= 128.0 / 4.3:
-            temp = np.array(prevFrequencies[0: numChannels])
-            meanFrequencies.append(temp/ count)
+        if count == 128.0 / 8:
+            meanFrequencies.append(prevFrequencies[0] / count)
             prevFrequencies = frequencies
             count = 1.0
         else:
             prevFrequencies += frequencies
             count += 1.0
 
-meanFrequencies = np.array(meanFrequencies).astype(int)
+meanFrequencies = np.array(meanFrequencies)
 degrees = []
 
 for f in meanFrequencies:
-    degrees.append(f % 4000 % 40 + 40)
+    degrees.append((int(f % 4000) % 40 + 40))
 
 track = 0
 channel = 0
@@ -39,15 +36,11 @@ duration = 1  # In beats
 tempo = 260  # In BPM
 volume = 80  # 0-127, as per the MIDI standard
 
-MyMIDI = md.MIDIFile(numChannels) # number of tracks are equal to the number of EEG channels
+MyMIDI = md.MIDIFile(1)  # One track, defaults to format 1 (tempo track is created automatically)
 MyMIDI.addTempo(track, time, tempo)
 
 for i, pitch in enumerate(degrees):
-    for j in range(numChannels):
-        MyMIDI.addNote(track + j, channel + j, pitch[j], time + i, duration, volume)
+    MyMIDI.addNote(track, channel, pitch, time + i, duration, volume)
 
-
-with open("nothing-AF3.mid", "wb") as output_file:
+with open(sys.argv[2], "wb") as output_file:
     MyMIDI.writeFile(output_file)
-
-# FluidSynth().play_midi("C:\\Users\\ratan\\Documents\\pitchTest.mid")
